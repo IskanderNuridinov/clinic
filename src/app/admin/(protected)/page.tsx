@@ -15,18 +15,25 @@ export default async function AdminDashboard() {
   const today = new Date();
   const todayStr = today.toISOString().split("T")[0];
 
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() - today.getDay() + 1);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 6);
+
   const [
-    { count: totalInquiries },
+    { count: totalAppointments },
     { count: newInquiries },
     { count: todayAppointments },
     { count: totalConversations },
     { data: recentInquiries },
+    { data: todayApptList },
   ] = await Promise.all([
-    supabase.from("inquiries").select("*", { count: "exact", head: true }),
+    supabase.from("appointments").select("*", { count: "exact", head: true }),
     supabase.from("inquiries").select("*", { count: "exact", head: true }).eq("status", "new"),
     supabase.from("appointments").select("*", { count: "exact", head: true }).gte("datetime", `${todayStr}T00:00:00`).lte("datetime", `${todayStr}T23:59:59`),
     supabase.from("conversations").select("*", { count: "exact", head: true }),
     supabase.from("inquiries").select("*").eq("status", "new").order("created_at", { ascending: false }).limit(5),
+    supabase.from("appointments").select("patient_name, doctor, datetime").gte("datetime", `${todayStr}T00:00:00`).lte("datetime", `${todayStr}T23:59:59`).order("datetime", { ascending: true }),
   ]);
 
   return (
@@ -36,9 +43,9 @@ export default async function AdminDashboard() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         <StatsCard
-          value={totalInquiries ?? 0}
-          label="Всего заявок"
-          subtitle="за всё время"
+          value={totalAppointments ?? 0}
+          label="Всего записей"
+          subtitle="в базе клиники"
           iconBg="#ecfeff"
           iconColor="#0891b2"
           icon={<svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>}
@@ -96,6 +103,33 @@ export default async function AdminDashboard() {
             <div className="text-center py-8 text-[#64748b]">Новых заявок нет</div>
           )}
         </div>
+
+        {/* Today's appointments */}
+        {todayApptList && todayApptList.length > 0 && (
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-[#ccfbf1] shadow-sm p-6 mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-[family-name:var(--font-figtree)] font-semibold text-[#134e4a] text-lg">
+                Приёмы сегодня
+              </h2>
+              <Link href="/admin/appointments" className="text-[#0891b2] text-sm hover:underline">Расписание →</Link>
+            </div>
+            <div className="space-y-2">
+              {todayApptList.map((a, i) => {
+                const t = new Date(a.datetime);
+                const time = `${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}`;
+                return (
+                  <div key={i} className="flex items-center gap-3 p-3 bg-[#f0fdfa] rounded-xl">
+                    <div className="text-[#0891b2] font-bold text-sm tabular-nums w-12 flex-shrink-0">{time}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-[#134e4a] text-sm">{a.patient_name}</div>
+                      <div className="text-[#64748b] text-xs truncate">{a.doctor}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Quick actions */}
         <div className="bg-white rounded-2xl border border-[#ccfbf1] shadow-sm p-6">
