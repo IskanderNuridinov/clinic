@@ -18,18 +18,15 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    // WAHA sends text as "message", voice/media as "message.any"
-    if (body.event !== "message" && body.event !== "message.any") return NextResponse.json({ ok: true });
+    // Only handle message.any — it covers all message types (text + voice + media).
+    // We do NOT use "message" event to avoid duplicate processing.
+    if (body.event !== "message.any") return NextResponse.json({ ok: true });
 
     const msg = body.payload;
     if (!msg || msg.fromMe) return NextResponse.json({ ok: true });
 
-    // Normalize msg.type — in message.any events it's in _data.type
+    // Normalize msg.type — in message.any events it's often in _data.type
     const msgType: string = msg.type || msg._data?.type || "";
-
-    // message.any fires for ALL messages (including text already handled by "message").
-    // Only use message.any for media/voice to avoid duplicate responses.
-    if (body.event === "message.any" && !msg.hasMedia) return NextResponse.json({ ok: true });
 
     const chatId: string = msg.from;
     let incomingText = "";
@@ -57,7 +54,7 @@ export async function POST(req: NextRequest) {
     if (!incomingText) return NextResponse.json({ ok: true });
     incomingText = incomingText.slice(0, MAX_MESSAGE_LENGTH);
 
-    const phone = chatId.replace("@c.us", "");
+    const phone = chatId.replace(/@\w+$/, "");
     const supabase = await createSupabaseServerClient();
 
     // Upsert conversation
@@ -91,7 +88,7 @@ export async function POST(req: NextRequest) {
       }));
 
     // Get AI response with full context
-    const aiResult = await getAIResponse(history);
+    const aiResult = await getAIResponse(history, phone);
     const reply = aiResult.text;
 
     // Handle booking

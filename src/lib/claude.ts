@@ -93,12 +93,17 @@ export type AIResult = {
 };
 
 export async function getAIResponse(
-  history: { role: "user" | "assistant"; content: string }[]
+  history: { role: "user" | "assistant"; content: string }[],
+  senderPhone?: string
 ): Promise<AIResult> {
+  const systemPrompt = senderPhone
+    ? `${SYSTEM_PROMPT}\n\nНОМЕР ТЕЛЕФОНА ПАЦИЕНТА (WhatsApp): +${senderPhone} — используйте этот номер при записи, не спрашивайте его повторно.`
+    : SYSTEM_PROMPT;
+
   const response = await client.messages.create({
     model: "claude-haiku-4-5",
     max_tokens: 600,
-    system: SYSTEM_PROMPT,
+    system: systemPrompt,
     messages: history,
     tools: TOOLS,
   });
