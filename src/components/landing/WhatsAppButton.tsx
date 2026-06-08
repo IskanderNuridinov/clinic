@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const PHONE = "77172988000";
+const PHONE = "77751993213";
 const MESSAGE = encodeURIComponent(
   "Здравствуйте! Хочу записаться на приём в МедПрайм. Подскажите свободное время."
 );

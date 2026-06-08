@@ -65,11 +65,11 @@ export default function Navbar() {
 
         {/* CTA */}
         <div className="hidden lg:flex items-center gap-3">
-          <a href="tel:+77172988000" className={`text-sm font-semibold flex items-center gap-1.5 ${scrolled ? "text-[#0891b2]" : "text-white"}`}>
+          <a href="tel:+77751993213" className={`text-sm font-semibold flex items-center gap-1.5 ${scrolled ? "text-[#0891b2]" : "text-white"}`}>
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" />
             </svg>
-            +7 (717) 298-80-00
+            +7 (775) 199-32-13
           </a>
           <a href="#contacts" className="btn btn-primary text-sm px-5 h-10">
             Записаться
@@ -107,11 +107,11 @@ export default function Navbar() {
               </a>
             ))}
             <div className="pt-2 border-t border-[#ccfbf1] mt-1 flex flex-col gap-2">
-              <a href="tel:+77172988000" className="px-4 py-3 text-[#0891b2] font-semibold flex items-center gap-2">
+              <a href="tel:+77751993213" className="px-4 py-3 text-[#0891b2] font-semibold flex items-center gap-2">
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" />
                 </svg>
-                +7 (717) 298-80-00
+                +7 (775) 199-32-13
               </a>
               <a href="#contacts" onClick={() => setOpen(false)} className="btn btn-primary w-full">
                 Записаться на приём

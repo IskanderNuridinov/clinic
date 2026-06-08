@@ -107,7 +107,7 @@ export default function About() {
                 </div>
 
                 <a
-                  href="tel:+77172988000"
+                  href="tel:+77751993213"
                   className="mt-6 flex items-center gap-3 bg-white/15 rounded-xl px-4 py-3 hover:bg-white/20 transition-colors"
                 >
                   <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">

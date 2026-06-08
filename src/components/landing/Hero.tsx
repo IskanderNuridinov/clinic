@@ -73,7 +73,7 @@ export default function Hero() {
               Записаться на приём
             </a>
             <a
-              href={`https://wa.me/77172988000?text=${encodeURIComponent("Здравствуйте! Хочу записаться на приём в МедПрайм. Подскажите свободное время.")}`}
+              href={`https://wa.me/77751993213?text=${encodeURIComponent("Здравствуйте! Хочу записаться на приём в МедПрайм. Подскажите свободное время.")}`}
               target="_blank"
               rel="noopener noreferrer"
               className="btn text-base px-7"

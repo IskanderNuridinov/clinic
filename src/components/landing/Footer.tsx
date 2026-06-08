@@ -20,7 +20,7 @@ const footerLinks = [
   {
     title: "Контакты",
     links: [
-      { label: "+7 (717) 298-80-00", href: "tel:+77172988000" },
+      { label: "+7 (775) 199-32-13", href: "tel:+77751993213" },
       { label: "+7 (771) 320-98-48", href: "tel:+77713209848" },
       { label: "info@medprime.kz", href: "mailto:info@medprime.kz" },
     ],
