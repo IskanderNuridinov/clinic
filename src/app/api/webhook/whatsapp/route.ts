@@ -24,11 +24,15 @@ export async function POST(req: NextRequest) {
     const msg = body.payload;
     if (!msg || msg.fromMe) return NextResponse.json({ ok: true });
 
-    const chatId: string = msg.from;
-    let incomingText = "";
-
     // Normalize msg.type — in message.any events it's in _data.type
     const msgType: string = msg.type || msg._data?.type || "";
+
+    // message.any fires for ALL messages (including text already handled by "message").
+    // Only use message.any for media/voice to avoid duplicate responses.
+    if (body.event === "message.any" && !msg.hasMedia) return NextResponse.json({ ok: true });
+
+    const chatId: string = msg.from;
+    let incomingText = "";
 
     if (msg.hasMedia && AUDIO_TYPES.has(msgType)) {
       const mediaUrl: string | undefined = msg.media?.url || msg.mediaUrl || msg._data?.mediaUrl;
