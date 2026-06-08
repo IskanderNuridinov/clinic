@@ -6,6 +6,14 @@ import { transcribeAudio, downloadWAHAMedia } from "@/lib/transcribe";
 
 export const runtime = "nodejs";
 
+function mapServiceToDoctor(service: string): string {
+  const s = service.toLowerCase();
+  if (s.includes("кардио") || s.includes("сердц") || s.includes("экг") || s.includes("экг")) return "Белова Н.И.";
+  if (s.includes("невро") || s.includes("эндокрино") || s.includes("узи") || s.includes("рентген") || s.includes("мрт")) return "Асанов Т.Р.";
+  if (s.includes("гинеко") || s.includes("офталь") || s.includes("лор") || s.includes("ухо") || s.includes("глаз")) return "Иванова С.В.";
+  return "Карпов Д.А."; // терапевт по умолчанию
+}
+
 const MAX_MESSAGE_LENGTH = 2000;
 const HISTORY_LIMIT = 20; // last 20 messages for context
 const AUDIO_TYPES = new Set(["ptt", "audio"]);
@@ -97,15 +105,14 @@ export async function POST(req: NextRequest) {
     // Handle booking
     if (aiResult.booking) {
       const b = aiResult.booking;
-      // Use tomorrow 10:00 as placeholder so it's visible in the calendar; admin sets exact time
       const placeholder = new Date();
       placeholder.setDate(placeholder.getDate() + 1);
       placeholder.setHours(10, 0, 0, 0);
       await supabase.from("appointments").insert({
         patient_name: b.patient_name,
-        doctor: b.service,
+        doctor: mapServiceToDoctor(b.service),
         datetime: placeholder.toISOString(),
-        notes: `[WhatsApp] Желаемое время: ${b.preferred_datetime}${b.notes ? " | " + b.notes : ""}`,
+        notes: `[WhatsApp] Услуга: ${b.service} | Желаемое время: ${b.preferred_datetime}${b.notes ? " | " + b.notes : ""}`,
       });
     }
 
