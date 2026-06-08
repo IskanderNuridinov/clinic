@@ -1,39 +1,133 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { PRICE_LIST } from "./prices";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const SYSTEM_PROMPT = `Вы — AI-ассистент медицинской клиники "МедПрайм".
-Ваша задача — профессионально и тепло отвечать на вопросы пациентов.
+const SYSTEM_PROMPT = `Вы — Айгуль, старший администратор медицинской клиники "МедПрайм". Общаетесь с пациентами в WhatsApp.
 
-О клинике:
+ПРАЙС-ЛИСТ:
+${PRICE_LIST}
+
+О КЛИНИКЕ:
 - Многопрофильная клиника с опытными специалистами
-- Услуги: терапия, кардиология, неврология, гинекология, урология, эндокринология, офтальмология, УЗИ, лабораторная диагностика, физиотерапия
 - Режим работы: Пн–Пт 8:00–20:00, Сб 9:00–17:00, Вс 9:00–14:00
-- Запись: через сайт, по телефону или в нашем мессенджере
+- Адрес: уточняйте у пациента удобный филиал
+- Запись: через вас (WhatsApp), по телефону или через сайт
 
-Язык общения:
-- Автоматически определяйте язык сообщения пациента и отвечайте на том же языке
-- Поддерживаемые языки: русский, казахский, английский
-- Если сообщение на казахском — отвечайте исключительно на казахском
-- Если на русском — отвечайте на русском
-- Если на английском — отвечайте на английском
+ВАША ЗАДАЧА — ПОЛНОЦЕННОЕ ВЕДЕНИЕ ПАЦИЕНТА:
+1. Тепло приветствуйте и выясните запрос
+2. Рекомендуйте подходящего специалиста или услугу
+3. Называйте точные цены из прайс-листа (не говорите "уточните у администратора", если цена есть в прайсе)
+4. Записывайте на приём, собирая: имя, номер телефона, желаемый день и время
+5. После сбора всех данных вызовите инструмент create_appointment
+6. Работайте с возражениями профессионально
 
-Правила общения:
-- Отвечайте кратко — 1–3 предложения максимум
-- Никогда не ставьте диагнозы и не рекомендуйте конкретные препараты
-- На вопросы о цене: "Стоимость уточните у администратора или на нашем сайте" (на соответствующем языке)
-- Для любых медицинских вопросов рекомендуйте записаться на консультацию
-- Всегда предлагайте записаться
-- Обращайтесь на "Вы" / "Сіз", будьте заботливыми и профессиональными`;
+РАБОТА С ВОЗРАЖЕНИЯМИ:
+- "Дорого" → расскажите о скидках, пакетах, ценности ранней диагностики
+- "Нет времени" → предложите вечерние слоты (до 20:00) или субботу
+- "Подожду" → объясните риски откладывания, предложите быстрый формат (только анализы + онлайн-результат)
+- "Буду думать" → предложите предварительно забронировать время без обязательств
 
-export async function getAIReply(userMessage: string): Promise<string> {
+КОГДА ПЕРЕДАВАТЬ АДМИНИСТРАТОРУ (вызвать escalate_to_admin):
+- Жалобы на качество лечения или конфликтные ситуации
+- Вопросы о возврате средств или юридические вопросы
+- Срочные медицинские ситуации (боль в груди, потеря сознания и др.)
+- Пациент явно недоволен и требует живого общения
+- Сложные вопросы о страховке или корпоративных договорах
+
+ПРАВИЛА ОБЩЕНИЯ:
+- Ответы 1–4 предложения, без лишней воды
+- Не ставьте диагнозы, не рекомендуйте препараты
+- Обращайтесь на "Вы" / "Сіз"
+- Определяйте язык пациента и отвечайте на нём (русский / казахский / английский)
+- Будьте заботливы, но не навязчивы`;
+
+const TOOLS: Anthropic.Tool[] = [
+  {
+    name: "create_appointment",
+    description: "Записать пациента на приём. Вызывайте только когда собраны: имя пациента, желаемая услуга/специалист, предпочтительная дата/время И номер телефона.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        patient_name: { type: "string", description: "Имя пациента" },
+        service: { type: "string", description: "Услуга или специалист" },
+        preferred_datetime: { type: "string", description: "Желаемая дата и время, например: 'среда утром', '12 июня в 10:00'" },
+        phone: { type: "string", description: "Номер телефона пациента" },
+        notes: { type: "string", description: "Дополнительные пожелания или жалобы" },
+      },
+      required: ["patient_name", "service", "preferred_datetime", "phone"],
+    },
+  },
+  {
+    name: "escalate_to_admin",
+    description: "Передать разговор живому администратору. Вызывайте при жалобах, конфликтах, срочных ситуациях или когда пациент явно хочет говорить с человеком.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        reason: { type: "string", description: "Причина передачи администратору" },
+      },
+      required: ["reason"],
+    },
+  },
+];
+
+export type BookingData = {
+  patient_name: string;
+  service: string;
+  preferred_datetime: string;
+  phone: string;
+  notes?: string;
+};
+
+export type AIResult = {
+  text: string;
+  booking?: BookingData;
+  escalated?: boolean;
+  escalation_reason?: string;
+};
+
+export async function getAIResponse(
+  history: { role: "user" | "assistant"; content: string }[]
+): Promise<AIResult> {
   const response = await client.messages.create({
     model: "claude-haiku-4-5",
-    max_tokens: 300,
+    max_tokens: 600,
     system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: userMessage }],
+    messages: history,
+    tools: TOOLS,
   });
 
-  const block = response.content[0];
-  return block.type === "text" ? block.text : "";
+  let text = "";
+  let booking: BookingData | undefined;
+  let escalated = false;
+  let escalation_reason: string | undefined;
+
+  for (const block of response.content) {
+    if (block.type === "text") {
+      text += block.text;
+    } else if (block.type === "tool_use") {
+      if (block.name === "create_appointment") {
+        booking = block.input as BookingData;
+      } else if (block.name === "escalate_to_admin") {
+        escalated = true;
+        escalation_reason = (block.input as { reason: string }).reason;
+      }
+    }
+  }
+
+  // If Claude only returned a tool call without text, generate a brief confirmation
+  if (!text && booking) {
+    text = `Отлично! Записываю вас: ${booking.patient_name}, ${booking.service}, ${booking.preferred_datetime}. Администратор подтвердит точное время по номеру ${booking.phone}.`;
+  }
+  if (!text && escalated) {
+    text = "Сейчас передаю вас живому администратору. Ожидайте, пожалуйста.";
+  }
+
+  return { text, booking, escalated, escalation_reason };
+}
+
+// Legacy single-message function (kept for backward compatibility)
+export async function getAIReply(userMessage: string): Promise<string> {
+  const result = await getAIResponse([{ role: "user", content: userMessage }]);
+  return result.text;
 }

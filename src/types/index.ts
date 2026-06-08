@@ -29,6 +29,7 @@ export interface Conversation {
   contact_name: string | null;
   last_message: string | null;
   updated_at: string;
+  escalated?: boolean;
 }
 
 export interface Message {

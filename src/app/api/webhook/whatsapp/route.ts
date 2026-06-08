@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getAIReply } from "@/lib/claude";
+import { getAIResponse } from "@/lib/claude";
 import { sendWAHAMessage } from "@/lib/waha";
 import { transcribeAudio, downloadWAHAMedia } from "@/lib/transcribe";
 
 export const runtime = "nodejs";
 
 const MAX_MESSAGE_LENGTH = 2000;
-
+const HISTORY_LIMIT = 20; // last 20 messages for context
 const AUDIO_TYPES = new Set(["ptt", "audio"]);
 
 export async function POST(req: NextRequest) {
@@ -18,70 +18,100 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-
     if (body.event !== "message") return NextResponse.json({ ok: true });
 
     const msg = body.payload;
     if (!msg || msg.fromMe) return NextResponse.json({ ok: true });
 
     const chatId: string = msg.from;
-    let text = "";
+    let incomingText = "";
 
     if (msg.hasMedia && AUDIO_TYPES.has(msg.type)) {
-      // Voice message — download and transcribe
       const mediaUrl: string | undefined = msg.mediaUrl || msg._data?.mediaUrl;
-
       if (mediaUrl) {
         const audioBuffer = await downloadWAHAMedia(mediaUrl);
         if (audioBuffer) {
           const mimetype = (msg.mimetype || "audio/ogg").split(";")[0].trim();
           const transcribed = await transcribeAudio(audioBuffer, mimetype);
-          if (transcribed) {
-            text = transcribed;
-          }
+          if (transcribed) incomingText = transcribed;
         }
       }
-
-      // If transcription failed or no key — ask to type
-      if (!text) {
-        await sendWAHAMessage(chatId, "Голосовое сообщение получено, но расшифровка недоступна. Пожалуйста, напишите текстом.");
+      if (!incomingText) {
+        await sendWAHAMessage(chatId, "Голосовое сообщение получено. Пожалуйста, напишите текстом — я отвечу сразу.");
         return NextResponse.json({ ok: true });
       }
     } else if (msg.hasMedia) {
-      // Other media (images, documents) — skip
       return NextResponse.json({ ok: true });
     } else {
-      text = (msg.body || "").trim();
+      incomingText = (msg.body || "").trim();
     }
 
-    if (!text) return NextResponse.json({ ok: true });
-
-    // Truncate to avoid excessive Claude token usage
-    text = text.slice(0, MAX_MESSAGE_LENGTH);
+    if (!incomingText) return NextResponse.json({ ok: true });
+    incomingText = incomingText.slice(0, MAX_MESSAGE_LENGTH);
 
     const phone = chatId.replace("@c.us", "");
     const supabase = await createSupabaseServerClient();
 
+    // Upsert conversation
     const { data: conv } = await supabase
       .from("conversations")
       .upsert(
-        { channel: "whatsapp", contact_id: phone, last_message: text, updated_at: new Date().toISOString() },
+        { channel: "whatsapp", contact_id: phone, last_message: incomingText, updated_at: new Date().toISOString() },
         { onConflict: "channel,contact_id" }
       )
       .select("id")
       .single();
 
-    if (conv?.id) {
-      await supabase.from("messages").insert({ conversation_id: conv.id, direction: "in", body: text });
+    if (!conv?.id) return NextResponse.json({ ok: true });
 
-      const reply = await getAIReply(text);
-      await sendWAHAMessage(chatId, reply);
+    // Save incoming message
+    await supabase.from("messages").insert({ conversation_id: conv.id, direction: "in", body: incomingText });
 
-      await supabase.from("messages").insert({ conversation_id: conv.id, direction: "out", body: reply });
-      await supabase.from("conversations")
-        .update({ last_message: reply, updated_at: new Date().toISOString() })
+    // Load recent conversation history for context
+    const { data: historyRows } = await supabase
+      .from("messages")
+      .select("direction, body")
+      .eq("conversation_id", conv.id)
+      .order("created_at", { ascending: false })
+      .limit(HISTORY_LIMIT);
+
+    const history = (historyRows ?? [])
+      .reverse()
+      .map((m) => ({
+        role: (m.direction === "in" ? "user" : "assistant") as "user" | "assistant",
+        content: m.body as string,
+      }));
+
+    // Get AI response with full context
+    const aiResult = await getAIResponse(history);
+    const reply = aiResult.text;
+
+    // Handle booking
+    if (aiResult.booking) {
+      const b = aiResult.booking;
+      await supabase.from("appointments").insert({
+        patient_name: b.patient_name,
+        doctor: b.service,
+        datetime: new Date().toISOString(), // placeholder — admin confirms exact time
+        notes: [b.preferred_datetime, b.notes].filter(Boolean).join(" | "),
+      });
+    }
+
+    // Handle escalation
+    if (aiResult.escalated) {
+      await supabase
+        .from("conversations")
+        .update({ escalated: true, updated_at: new Date().toISOString() } as Record<string, unknown>)
         .eq("id", conv.id);
     }
+
+    // Send reply and save
+    await sendWAHAMessage(chatId, reply);
+    await supabase.from("messages").insert({ conversation_id: conv.id, direction: "out", body: reply });
+    await supabase.from("conversations")
+      .update({ last_message: reply, updated_at: new Date().toISOString() })
+      .eq("id", conv.id);
+
   } catch (err) {
     console.error("WAHA webhook error:", err);
   }

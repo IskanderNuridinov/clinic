@@ -74,7 +74,12 @@ export default function ConversationsPage() {
                   {conv.channel === "whatsapp" ? <WhatsAppIcon /> : <InstagramIcon />}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="font-medium text-[#134e4a] text-sm truncate">{conv.contact_name || conv.contact_id}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-medium text-[#134e4a] text-sm truncate">{conv.contact_name || conv.contact_id}</span>
+                    {conv.escalated && (
+                      <span className="flex-shrink-0 text-[10px] font-semibold bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">Нужен админ</span>
+                    )}
+                  </div>
                   <div className="text-[#64748b] text-xs truncate">{conv.last_message || "—"}</div>
                 </div>
                 <div className="text-[#94a3b8] text-[10px] flex-shrink-0">
