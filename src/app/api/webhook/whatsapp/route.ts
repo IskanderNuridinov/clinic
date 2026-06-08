@@ -97,11 +97,15 @@ export async function POST(req: NextRequest) {
     // Handle booking
     if (aiResult.booking) {
       const b = aiResult.booking;
+      // Use tomorrow 10:00 as placeholder so it's visible in the calendar; admin sets exact time
+      const placeholder = new Date();
+      placeholder.setDate(placeholder.getDate() + 1);
+      placeholder.setHours(10, 0, 0, 0);
       await supabase.from("appointments").insert({
         patient_name: b.patient_name,
         doctor: b.service,
-        datetime: new Date().toISOString(), // placeholder — admin confirms exact time
-        notes: [b.preferred_datetime, b.notes].filter(Boolean).join(" | "),
+        datetime: placeholder.toISOString(),
+        notes: `[WhatsApp] Желаемое время: ${b.preferred_datetime}${b.notes ? " | " + b.notes : ""}`,
       });
     }
 

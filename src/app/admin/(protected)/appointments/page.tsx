@@ -89,6 +89,33 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
+      {/* WhatsApp pending appointments */}
+      {appointments.filter(a => a.notes?.startsWith("[WhatsApp]")).length > 0 && (
+        <div className="mb-6 bg-green-50 border border-green-200 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <h2 className="font-semibold text-green-800 text-sm">Заявки из WhatsApp — требуют подтверждения времени</h2>
+          </div>
+          <div className="space-y-2">
+            {appointments.filter(a => a.notes?.startsWith("[WhatsApp]")).map(a => (
+              <div key={a.id} className="bg-white rounded-xl border border-green-100 px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <span className="font-semibold text-[#134e4a]">{a.patient_name}</span>
+                  <span className="text-[#64748b] text-sm ml-2">— {a.doctor}</span>
+                  <div className="text-xs text-[#64748b] mt-0.5">{a.notes?.replace("[WhatsApp] ", "")}</div>
+                </div>
+                <button
+                  onClick={() => setModal({ type: "view", appointment: a })}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-[#0891b2] text-white hover:bg-[#0e7490] min-h-[36px]"
+                >
+                  Подтвердить время
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Calendar */}
       <div className="bg-white rounded-2xl border border-[#ccfbf1] shadow-sm overflow-auto">
         {/* Header */}
