@@ -5,25 +5,34 @@ import { sendWAHAMessage } from "@/lib/waha";
 
 export const runtime = "nodejs";
 
+const MAX_MESSAGE_LENGTH = 2000;
+
 export async function POST(req: NextRequest) {
+  // Verify request comes from our WAHA instance
+  const secret = req.headers.get("x-webhook-secret");
+  if (process.env.WAHA_WEBHOOK_SECRET && secret !== process.env.WAHA_WEBHOOK_SECRET) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const body = await req.json();
 
-    // WAHA sends { event, session, payload }
     if (body.event !== "message") return NextResponse.json({ ok: true });
 
     const msg = body.payload;
     if (!msg || msg.fromMe || msg.hasMedia) return NextResponse.json({ ok: true });
 
-    const chatId: string = msg.from; // "77001234567@c.us"
-    const text: string = msg.body || "";
-    if (!text.trim()) return NextResponse.json({ ok: true });
+    const chatId: string = msg.from;
+    const raw: string = msg.body || "";
+    if (!raw.trim()) return NextResponse.json({ ok: true });
+
+    // Truncate oversized messages to avoid excessive Claude usage
+    const text = raw.slice(0, MAX_MESSAGE_LENGTH);
 
     const phone = chatId.replace("@c.us", "");
 
     const supabase = await createSupabaseServerClient();
 
-    // Upsert conversation
     const { data: conv } = await supabase
       .from("conversations")
       .upsert(
