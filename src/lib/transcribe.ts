@@ -35,11 +35,16 @@ export async function transcribeAudio(audioBuffer: Buffer, mimetype: string): Pr
 
 export async function downloadWAHAMedia(mediaUrl: string): Promise<Buffer | null> {
   try {
-    // mediaUrl from WAHA payload may be absolute or relative
-    // If relative, prepend WAHA_URL
-    const url = mediaUrl.startsWith("http")
-      ? mediaUrl
-      : `${process.env.WAHA_URL}/${mediaUrl.replace(/^\//, "")}`;
+    let url = mediaUrl;
+
+    // WAHA returns localhost URL — replace with real external URL
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/.test(url)) {
+      const local = new URL(url);
+      const external = new URL(process.env.WAHA_URL!);
+      url = `${external.origin}${local.pathname}${local.search}`;
+    } else if (!url.startsWith("http")) {
+      url = `${process.env.WAHA_URL}/${url.replace(/^\//, "")}`;
+    }
 
     const res = await fetch(url, {
       headers: process.env.WAHA_API_KEY ? { "X-Api-Key": process.env.WAHA_API_KEY } : {},

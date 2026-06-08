@@ -18,7 +18,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    if (body.event !== "message") return NextResponse.json({ ok: true });
+    // WAHA sends text as "message", voice/media as "message.any"
+    if (body.event !== "message" && body.event !== "message.any") return NextResponse.json({ ok: true });
 
     const msg = body.payload;
     if (!msg || msg.fromMe) return NextResponse.json({ ok: true });
@@ -26,8 +27,11 @@ export async function POST(req: NextRequest) {
     const chatId: string = msg.from;
     let incomingText = "";
 
-    if (msg.hasMedia && AUDIO_TYPES.has(msg.type)) {
-      const mediaUrl: string | undefined = msg.mediaUrl || msg._data?.mediaUrl;
+    // Normalize msg.type — in message.any events it's in _data.type
+    const msgType: string = msg.type || msg._data?.type || "";
+
+    if (msg.hasMedia && AUDIO_TYPES.has(msgType)) {
+      const mediaUrl: string | undefined = msg.media?.url || msg.mediaUrl || msg._data?.mediaUrl;
       if (mediaUrl) {
         const audioBuffer = await downloadWAHAMedia(mediaUrl);
         if (audioBuffer) {
@@ -40,7 +44,7 @@ export async function POST(req: NextRequest) {
         await sendWAHAMessage(chatId, "Голосовое сообщение получено. Пожалуйста, напишите текстом — я отвечу сразу.");
         return NextResponse.json({ ok: true });
       }
-    } else if (msg.hasMedia) {
+    } else if (msg.hasMedia && !AUDIO_TYPES.has(msgType)) {
       return NextResponse.json({ ok: true });
     } else {
       incomingText = (msg.body || "").trim();
