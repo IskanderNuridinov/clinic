@@ -1,26 +1,125 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* UI/UX Pro Max — Medical Clinic Design System */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Medical Clinic Palette (skill data row #58) */
+  --color-primary: #0891b2;
+  --color-primary-dark: #0e7490;
+  --color-primary-darker: #164e63;
+  --color-primary-light: #ecfeff;
+  --color-primary-mid: #cffafe;
+  --color-secondary: #22d3ee;
+  --color-accent: #16a34a;
+  --color-accent-light: #dcfce7;
+  --color-background: #f0fdfa;
+  --color-foreground: #134e4a;
+  --color-card: #ffffff;
+  --color-muted: #e8f1f6;
+  --color-muted-fg: #64748b;
+  --color-border: #ccfbf1;
+  --color-destructive: #dc2626;
+
+  /* Typography — Healthcare (Figtree + Noto Sans) per UI/UX Pro Max */
+  --font-sans: var(--font-noto);
+  --font-heading: var(--font-figtree);
+
+  /* Spacing rhythm */
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #ffffff;
+  color: #134e4a;
+  font-family: var(--font-noto, system-ui, sans-serif);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+h1, h2, h3, h4 {
+  font-family: var(--font-figtree, system-ui, sans-serif);
+}
+
+/* Section rhythm */
+.section { padding: 5rem 0; }
+@media (max-width: 768px) { .section { padding: 3rem 0; } }
+
+/* Card hover — 200ms per skill guidelines */
+.card-hover {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(8, 145, 178, 0.14);
+}
+
+/* Button base — 44px min touch target */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 1.5rem;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  transition: background 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn:focus-visible {
+  outline: 3px solid #0891b2;
+  outline-offset: 2px;
+}
+.btn-primary {
+  background: #0891b2;
+  color: #ffffff;
+}
+.btn-primary:hover {
+  background: #0e7490;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(8, 145, 178, 0.35);
+}
+.btn-secondary {
+  background: transparent;
+  color: #0891b2;
+  border: 2px solid #0891b2;
+}
+.btn-secondary:hover {
+  background: #ecfeff;
+}
+
+/* WhatsApp float button pulse */
+@keyframes wa-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.5); }
+  60% { box-shadow: 0 0 0 14px rgba(37, 211, 102, 0); }
+}
+.wa-float {
+  animation: wa-pulse 2.5s ease-in-out infinite;
+}
+
+/* Gradient text */
+.text-gradient {
+  background: linear-gradient(135deg, #0891b2, #16a34a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Section divider */
+.divider {
+  width: 64px;
+  height: 4px;
+  background: linear-gradient(90deg, #0891b2, #22d3ee);
+  border-radius: 2px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f0fdfa; }
+::-webkit-scrollbar-thumb { background: #a5f3fc; border-radius: 3px; }
