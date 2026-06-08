@@ -7,8 +7,7 @@ import { Appointment } from "@/types";
 
 const DOCTORS = ["Карпов Д.А.", "Белова Н.И.", "Асанов Т.Р.", "Иванова С.В."];
 const DOCTOR_COLORS = ["#0891b2", "#16a34a", "#8b5cf6", "#f59e0b"];
-const DOCTOR_BG = ["bg-cyan-100", "bg-green-100", "bg-purple-100", "bg-amber-100"];
-const DOCTOR_TEXT = ["text-cyan-700", "text-green-700", "text-purple-700", "text-amber-700"];
+const DOCTOR_LIGHT = ["#e0f7fa", "#dcfce7", "#ede9fe", "#fef3c7"];
 const HOURS = Array.from({ length: 10 }, (_, i) => i + 9); // 9..18
 
 interface ModalState {
@@ -117,12 +116,14 @@ export default function AppointmentsPage() {
           <button
             key={doc}
             onClick={() => setFilterDoctor(filterDoctor === doc ? null : doc)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
               filterDoctor === doc
-                ? `${DOCTOR_BG[i]} ${DOCTOR_TEXT[i]} border-2`
-                : "bg-white border border-[#ccfbf1] text-[#64748b] hover:bg-[#f0fdfa]"
+                ? "font-semibold"
+                : "border-[#ccfbf1] text-[#64748b] bg-white hover:bg-[#f0fdfa]"
             }`}
-            style={filterDoctor === doc ? { borderColor: DOCTOR_COLORS[i] } : {}}
+            style={filterDoctor === doc
+              ? { background: DOCTOR_LIGHT[i], borderColor: DOCTOR_COLORS[i], color: DOCTOR_COLORS[i] }
+              : {}}
           >
             <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: DOCTOR_COLORS[i] }} />
             {doc}
