@@ -94,11 +94,16 @@ export type AIResult = {
 
 export async function getAIResponse(
   history: { role: "user" | "assistant"; content: string }[],
-  senderPhone?: string
+  senderPhone?: string,
+  busySlots?: string
 ): Promise<AIResult> {
-  const systemPrompt = senderPhone
-    ? `${SYSTEM_PROMPT}\n\nНОМЕР ТЕЛЕФОНА ПАЦИЕНТА (WhatsApp): +${senderPhone} — используйте этот номер при записи, не спрашивайте его повторно.`
-    : SYSTEM_PROMPT;
+  let systemPrompt = SYSTEM_PROMPT;
+  if (senderPhone) {
+    systemPrompt += `\n\nНОМЕР ТЕЛЕФОНА ПАЦИЕНТА (WhatsApp): +${senderPhone} — используйте этот номер при записи, не спрашивайте его повторно.`;
+  }
+  if (busySlots) {
+    systemPrompt += `\n\nЗАНЯТЫЕ СЛОТЫ НА БЛИЖАЙШИЕ 2 НЕДЕЛИ (не предлагайте эти время):\n${busySlots}\nЕсли пациент просит занятое время — скажите что оно занято и предложите ближайшее свободное.`;
+  }
 
   const response = await client.messages.create({
     model: "claude-haiku-4-5",

@@ -98,8 +98,29 @@ export async function POST(req: NextRequest) {
         content: m.body as string,
       }));
 
+    // Fetch busy slots for next 2 weeks so Claude can avoid double-booking
+    const now = new Date();
+    const twoWeeksLater = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const { data: upcomingAppts } = await supabase
+      .from("appointments")
+      .select("doctor, datetime")
+      .gte("datetime", now.toISOString())
+      .lte("datetime", twoWeeksLater.toISOString())
+      .order("datetime", { ascending: true });
+
+    const busySlots = upcomingAppts?.length
+      ? upcomingAppts.map(a => {
+          const d = new Date(a.datetime);
+          const days = ["вс","пн","вт","ср","чт","пт","сб"];
+          const day = days[d.getDay()];
+          const date = `${d.getDate()}.${String(d.getMonth()+1).padStart(2,"0")}`;
+          const time = `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+          return `${day} ${date} ${time} — ${a.doctor}`;
+        }).join("\n")
+      : undefined;
+
     // Get AI response with full context
-    const aiResult = await getAIResponse(history, realPhone);
+    const aiResult = await getAIResponse(history, realPhone, busySlots);
     const reply = aiResult.text;
 
     // Handle booking
