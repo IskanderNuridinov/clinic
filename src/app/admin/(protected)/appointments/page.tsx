@@ -7,6 +7,8 @@ import { Appointment } from "@/types";
 
 const DOCTORS = ["Карпов Д.А.", "Белова Н.И.", "Асанов Т.Р.", "Иванова С.В."];
 const DOCTOR_COLORS = ["#0891b2", "#16a34a", "#8b5cf6", "#f59e0b"];
+const DOCTOR_BG = ["bg-cyan-100", "bg-green-100", "bg-purple-100", "bg-amber-100"];
+const DOCTOR_TEXT = ["text-cyan-700", "text-green-700", "text-purple-700", "text-amber-700"];
 const HOURS = Array.from({ length: 10 }, (_, i) => i + 9); // 9..18
 
 interface ModalState {
@@ -16,12 +18,17 @@ interface ModalState {
   appointment?: Appointment;
 }
 
+function doctorColor(doctor: string) {
+  return DOCTOR_COLORS[DOCTORS.indexOf(doctor)] || "#0891b2";
+}
+
 export default function AppointmentsPage() {
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [form, setForm] = useState({ patient_name: "", doctor: DOCTORS[0], datetime: "", notes: "" });
   const [saving, setSaving] = useState(false);
+  const [filterDoctor, setFilterDoctor] = useState<string | null>(null);
 
   const fetchAppointments = useCallback(async () => {
     const res = await fetch("/api/appointments");
@@ -32,8 +39,12 @@ export default function AppointmentsPage() {
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
+  const visibleAppointments = filterDoctor
+    ? appointments.filter(a => a.doctor === filterDoctor)
+    : appointments;
+
   function getAppointmentsForSlot(day: Date, hour: number) {
-    return appointments.filter((a) => {
+    return visibleAppointments.filter((a) => {
       const d = parseISO(a.datetime);
       return isSameDay(d, day) && d.getHours() === hour;
     });
@@ -43,7 +54,7 @@ export default function AppointmentsPage() {
     const dt = new Date(day);
     dt.setHours(hour, 0, 0, 0);
     const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-    setForm({ patient_name: "", doctor: DOCTORS[0], datetime: local, notes: "" });
+    setForm({ patient_name: "", doctor: filterDoctor || DOCTORS[0], datetime: local, notes: "" });
     setModal({ type: "create", date: day, hour });
   }
 
@@ -66,12 +77,12 @@ export default function AppointmentsPage() {
     setModal(null);
   }
 
-  const doctorColor = (doctor: string) => DOCTOR_COLORS[DOCTORS.indexOf(doctor)] || "#0891b2";
+  const whatsappPending = appointments.filter(a => a.notes?.startsWith("[WhatsApp]"));
 
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <h1 className="font-[family-name:var(--font-figtree)] text-[#134e4a] font-bold text-2xl">Расписание</h1>
         <div className="flex items-center gap-2">
           <button onClick={() => setWeekStart(subWeeks(weekStart, 1))} className="p-2 rounded-xl border border-[#ccfbf1] hover:bg-[#f0fdfa] min-w-[44px] min-h-[44px] flex items-center justify-center text-[#0891b2]">
@@ -89,15 +100,45 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
+      {/* Doctor filter chips */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <span className="text-xs text-[#64748b] mr-1">Врач:</span>
+        <button
+          onClick={() => setFilterDoctor(null)}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+            filterDoctor === null
+              ? "bg-[#134e4a] text-white"
+              : "bg-white border border-[#ccfbf1] text-[#64748b] hover:bg-[#f0fdfa]"
+          }`}
+        >
+          Все
+        </button>
+        {DOCTORS.map((doc, i) => (
+          <button
+            key={doc}
+            onClick={() => setFilterDoctor(filterDoctor === doc ? null : doc)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              filterDoctor === doc
+                ? `${DOCTOR_BG[i]} ${DOCTOR_TEXT[i]} border-2`
+                : "bg-white border border-[#ccfbf1] text-[#64748b] hover:bg-[#f0fdfa]"
+            }`}
+            style={filterDoctor === doc ? { borderColor: DOCTOR_COLORS[i] } : {}}
+          >
+            <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: DOCTOR_COLORS[i] }} />
+            {doc}
+          </button>
+        ))}
+      </div>
+
       {/* WhatsApp pending appointments */}
-      {appointments.filter(a => a.notes?.startsWith("[WhatsApp]")).length > 0 && (
-        <div className="mb-6 bg-green-50 border border-green-200 rounded-2xl p-4">
+      {whatsappPending.length > 0 && (
+        <div className="mb-4 bg-green-50 border border-green-200 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
             <h2 className="font-semibold text-green-800 text-sm">Заявки из WhatsApp — требуют подтверждения времени</h2>
           </div>
           <div className="space-y-2">
-            {appointments.filter(a => a.notes?.startsWith("[WhatsApp]")).map(a => (
+            {whatsappPending.map(a => (
               <div key={a.id} className="bg-white rounded-xl border border-green-100 px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
                 <div>
                   <span className="font-semibold text-[#134e4a]">{a.patient_name}</span>
@@ -117,58 +158,50 @@ export default function AppointmentsPage() {
       )}
 
       {/* Calendar */}
-      <div className="bg-white rounded-2xl border border-[#ccfbf1] shadow-sm overflow-auto">
-        {/* Header */}
-        <div className="grid border-b border-[#ccfbf1]" style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}>
-          <div className="p-3" />
-          {weekDays.map((day) => (
-            <div key={day.toISOString()} className={`p-3 text-center border-l border-[#ccfbf1] ${isSameDay(day, new Date()) ? "bg-[#ecfeff]" : ""}`}>
-              <div className="text-[#64748b] text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>
-              <div className={`font-[family-name:var(--font-figtree)] font-bold text-lg mt-0.5 ${isSameDay(day, new Date()) ? "text-[#0891b2]" : "text-[#134e4a]"}`}>
-                {format(day, "d")}
+      <div className="bg-white rounded-2xl border border-[#ccfbf1] shadow-sm overflow-x-auto">
+        <div className="min-w-[600px]">
+          {/* Day headers */}
+          <div className="grid border-b border-[#ccfbf1]" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
+            <div className="p-3" />
+            {weekDays.map((day) => (
+              <div key={day.toISOString()} className={`p-3 text-center border-l border-[#ccfbf1] ${isSameDay(day, new Date()) ? "bg-[#ecfeff]" : ""}`}>
+                <div className="text-[#64748b] text-xs uppercase">{format(day, "EEE", { locale: ru })}</div>
+                <div className={`font-[family-name:var(--font-figtree)] font-bold text-lg mt-0.5 ${isSameDay(day, new Date()) ? "text-[#0891b2]" : "text-[#134e4a]"}`}>
+                  {format(day, "d")}
+                </div>
               </div>
+            ))}
+          </div>
+
+          {/* Time slots */}
+          {HOURS.map((hour) => (
+            <div key={hour} className="grid border-b border-[#f0fdfa] last:border-b-0" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
+              <div className="p-2 text-right pr-3 text-xs text-[#94a3b8] pt-2.5 tabular-nums">{hour}:00</div>
+              {weekDays.map((day) => {
+                const slotAppts = getAppointmentsForSlot(day, hour);
+                return (
+                  <div
+                    key={day.toISOString()}
+                    className="border-l border-[#ccfbf1] min-h-[56px] p-1 cursor-pointer hover:bg-[#f0fdfa] transition-colors"
+                    onClick={() => { if (!slotAppts.length) openCreate(day, hour); }}
+                  >
+                    {slotAppts.map((a) => (
+                      <div
+                        key={a.id}
+                        className="rounded-lg p-1.5 mb-1 text-white text-xs cursor-pointer hover:opacity-90 transition-opacity"
+                        style={{ background: doctorColor(a.doctor) }}
+                        onClick={(e) => { e.stopPropagation(); setModal({ type: "view", appointment: a }); }}
+                      >
+                        <div className="font-semibold truncate leading-tight">{a.patient_name}</div>
+                        <div className="opacity-80 truncate text-[10px]">{a.doctor}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
             </div>
           ))}
         </div>
-
-        {/* Slots */}
-        {HOURS.map((hour) => (
-          <div key={hour} className="grid border-b border-[#f0fdfa]" style={{ gridTemplateColumns: "60px repeat(7, 1fr)" }}>
-            <div className="p-2 text-right pr-3 text-xs text-[#94a3b8] pt-2.5">{hour}:00</div>
-            {weekDays.map((day) => {
-              const slotAppts = getAppointmentsForSlot(day, hour);
-              return (
-                <div
-                  key={day.toISOString()}
-                  className="border-l border-[#ccfbf1] min-h-[60px] p-1 cursor-pointer hover:bg-[#f0fdfa] transition-colors"
-                  onClick={() => { if (!slotAppts.length) openCreate(day, hour); }}
-                >
-                  {slotAppts.map((a) => (
-                    <div
-                      key={a.id}
-                      className="rounded-lg p-1.5 mb-1 text-white text-xs cursor-pointer hover:opacity-90 transition-opacity"
-                      style={{ background: doctorColor(a.doctor) }}
-                      onClick={(e) => { e.stopPropagation(); setModal({ type: "view", appointment: a }); }}
-                    >
-                      <div className="font-semibold truncate">{a.patient_name}</div>
-                      <div className="opacity-80 truncate">{a.doctor}</div>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-
-      {/* Legend */}
-      <div className="flex flex-wrap gap-3 mt-4">
-        {DOCTORS.map((d, i) => (
-          <div key={d} className="flex items-center gap-1.5 text-xs text-[#64748b]">
-            <div className="w-3 h-3 rounded-full" style={{ background: DOCTOR_COLORS[i] }} />
-            {d}
-          </div>
-        ))}
       </div>
 
       {/* Modal */}
@@ -215,10 +248,15 @@ export default function AppointmentsPage() {
                 <h3 className="font-[family-name:var(--font-figtree)] text-[#134e4a] font-bold text-lg mb-4">Запись</h3>
                 <div className="space-y-2 mb-5">
                   <div><span className="text-[#64748b] text-xs">Пациент</span><div className="font-medium text-[#134e4a]">{modal.appointment?.patient_name}</div></div>
-                  <div><span className="text-[#64748b] text-xs">Врач</span><div className="font-medium text-[#134e4a]">{modal.appointment?.doctor}</div></div>
+                  <div>
+                    <span className="text-[#64748b] text-xs">Врач / Услуга</span>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: doctorColor(modal.appointment?.doctor || "") }} />
+                      <span className="font-medium text-[#134e4a]">{modal.appointment?.doctor}</span>
+                    </div>
+                  </div>
                   <div><span className="text-[#64748b] text-xs">Дата</span><div className="font-medium text-[#134e4a]">{modal.appointment && format(parseISO(modal.appointment.datetime), "d MMMM yyyy, HH:mm", { locale: ru })}</div></div>
                   {modal.appointment?.notes && <div><span className="text-[#64748b] text-xs">Заметки</span><div className="text-[#134e4a] text-sm">{modal.appointment.notes}</div></div>}
-                  {modal.appointment?.google_event_id && <div className="text-[#16a34a] text-xs flex items-center gap-1">✓ Синхронизировано с Google Calendar</div>}
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setModal(null)} className="flex-1 py-2.5 rounded-xl border border-[#ccfbf1] text-sm text-[#64748b] hover:bg-[#f0fdfa] min-h-[44px]">Закрыть</button>
