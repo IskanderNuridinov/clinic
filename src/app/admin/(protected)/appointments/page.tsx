@@ -183,7 +183,7 @@ export default function AppointmentsPage() {
                 return (
                   <div
                     key={day.toISOString()}
-                    className="border-l border-[#ccfbf1] min-h-[56px] p-1 cursor-pointer hover:bg-[#f0fdfa] transition-colors"
+                    className="border-l border-[#ccfbf1] min-h-[56px] p-1 cursor-pointer hover:bg-[#f0fdfa] transition-colors overflow-hidden"
                     onClick={() => { if (!slotAppts.length) openCreate(day, hour); }}
                   >
                     {slotAppts.map((a) => (
