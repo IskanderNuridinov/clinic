@@ -54,7 +54,10 @@ export async function POST(req: NextRequest) {
     if (!incomingText) return NextResponse.json({ ok: true });
     incomingText = incomingText.slice(0, MAX_MESSAGE_LENGTH);
 
+    // Strip suffix to get contact identifier for DB storage
     const phone = chatId.replace(/@\w+$/, "");
+    // @lid is WhatsApp's internal anonymized ID, not a real phone number
+    const realPhone = chatId.endsWith("@c.us") ? phone : undefined;
     const supabase = await createSupabaseServerClient();
 
     // Upsert conversation
@@ -88,7 +91,7 @@ export async function POST(req: NextRequest) {
       }));
 
     // Get AI response with full context
-    const aiResult = await getAIResponse(history, phone);
+    const aiResult = await getAIResponse(history, realPhone);
     const reply = aiResult.text;
 
     // Handle booking
